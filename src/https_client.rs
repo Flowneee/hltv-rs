@@ -25,12 +25,28 @@ pub mod impls {
     pub mod attohttpc_impl {
         use super::*;
 
+        #[cfg(test)]
+        lazy_static::lazy_static! {
+            static ref THROTTLE_MUTEX: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
+        }
+
         /// `HttpsClient` implementation for `attohttpc` crate.
         pub struct AttoHttpcImpl {}
 
         impl HttpsClient for AttoHttpcImpl {
+            #[cfg(not(test))]
             fn get(&self, url: &str) -> Result<String, Box<dyn Error>> {
                 Ok(attohttpc::get(url).send()?.error_for_status()?.text()?)
+            }
+
+            #[cfg(test)]
+            fn get(&self, url: &str) -> Result<String, Box<dyn Error>> {
+                let sleep_duration = std::time::Duration::from_secs(rand::random::<u64>() % 3 + 1);
+                let guard = THROTTLE_MUTEX.lock();
+                let res = attohttpc::get(url).send()?.error_for_status()?.text()?;
+                std::thread::sleep(sleep_duration);
+                drop(guard);
+                Ok(res)
             }
         }
 
