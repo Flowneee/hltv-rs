@@ -1,7 +1,7 @@
 use scraper::{Html, Selector};
 
 use super::{ElementRef, ElementRefExt};
-use crate::{Error, NoneErrorExt, Result};
+use crate::{NoneErrorExt, Result};
 
 #[derive(Debug, PartialEq)]
 pub struct ArticleBrief {

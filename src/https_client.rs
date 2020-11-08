@@ -41,7 +41,8 @@ pub mod impls {
 
             #[cfg(test)]
             fn get(&self, url: &str) -> Result<String, Box<dyn Error>> {
-                let sleep_duration = std::time::Duration::from_secs(rand::random::<u64>() % 3 + 1);
+                let sleep_duration =
+                    std::time::Duration::from_millis(rand::random::<u64>() % 50 + 50);
                 let guard = THROTTLE_MUTEX.lock();
                 let res = attohttpc::get(url).send()?.error_for_status()?.text()?;
                 std::thread::sleep(sleep_duration);

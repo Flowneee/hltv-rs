@@ -1,10 +1,12 @@
-pub use article::*;
+pub use articles::*;
+pub use matches::*;
 
 use scraper::{ElementRef, Html, Selector};
 
-use crate::{AttoHttpcImpl, Error, HttpsClient, NoneErrorExt, Result, HLTV_URL};
+use crate::{AttoHttpcImpl, Error, HttpsClient, Result, HLTV_URL};
 
-mod article;
+mod articles;
+mod matches;
 
 /// Extension trait for `scrapper::ElementRef`.
 trait ElementRefExt {
@@ -102,6 +104,13 @@ impl HltvApi {
         let document = Html::parse_document(&self.get_page(&path)?);
         archived_article_briefs_from_html(&document)
     }
+
+    /// Get match results briefs.
+    pub fn days_results_briefs(&self, page_offset: Option<u64>) -> Result<DaysResults> {
+        let path = format!("/results?offset={}", page_offset.unwrap_or_default() * 100);
+        let document = Html::parse_document(&self.get_page(&path)?);
+        DaysResults::from_html(&document)
+    }
 }
 
 /// Build new instance of `HltvApi` with `attohttpc` client and default HLTV URL.
@@ -155,5 +164,16 @@ mod tests {
         for month in months {
             assert!(HltvApi::default().archived_news_briefs(2019, month).is_ok());
         }
+    }
+
+    #[test]
+    fn days_results() {
+        HltvApi::default().days_results_briefs(None).unwrap();
+        assert!(HltvApi::default().days_results_briefs(None).is_ok());
+    }
+
+    #[test]
+    fn days_results_page_offset() {
+        assert!(HltvApi::default().days_results_briefs(Some(5)).is_ok());
     }
 }
