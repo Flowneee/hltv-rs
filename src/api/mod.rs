@@ -29,6 +29,7 @@ impl<'a> ElementRefExt for ElementRef<'a> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Month {
     January,
     February,
@@ -105,11 +106,19 @@ impl HltvApi {
         archived_article_briefs_from_html(&document)
     }
 
-    /// Get match results briefs.
-    pub fn days_results_briefs(&self, page_offset: Option<u64>) -> Result<DaysResults> {
+    /// Get matches results.
+    pub fn matches_results(&self, page_offset: Option<u64>) -> Result<MatchesResults> {
         let path = format!("/results?offset={}", page_offset.unwrap_or_default() * 100);
         let document = Html::parse_document(&self.get_page(&path)?);
-        DaysResults::from_html(&document)
+        MatchesResults::from_html(&document)
+    }
+
+    /// Get upcoming matches.
+    pub fn upcoming_matches(&self) -> Result<UpcomingMatches> {
+        let path = format!("/matches");
+        let document = Html::parse_document(&self.get_page(&path)?);
+        //println!("{}", document.root_element().html());
+        UpcomingMatches::from_html(&document)
     }
 }
 
@@ -162,18 +171,26 @@ mod tests {
         ];
 
         for month in months {
-            assert!(HltvApi::default().archived_news_briefs(2019, month).is_ok());
+            assert!(
+                HltvApi::default().archived_news_briefs(2019, month).is_ok(),
+                format!("News for {:?} 2019 is not OK", month)
+            );
         }
     }
 
     #[test]
-    fn days_results() {
-        HltvApi::default().days_results_briefs(None).unwrap();
-        assert!(HltvApi::default().days_results_briefs(None).is_ok());
+    fn matches_results() {
+        assert!(HltvApi::default().matches_results(None).is_ok());
     }
 
     #[test]
-    fn days_results_page_offset() {
-        assert!(HltvApi::default().days_results_briefs(Some(5)).is_ok());
+    fn matches_results_page_offset() {
+        assert!(HltvApi::default().matches_results(Some(5)).is_ok());
+    }
+
+    #[test]
+    fn upcoming_matches() {
+        HltvApi::default().upcoming_matches().unwrap();
+        assert!(HltvApi::default().upcoming_matches().is_ok());
     }
 }

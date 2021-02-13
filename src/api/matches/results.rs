@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 use scraper::{Html, Selector};
 
-use super::{ElementRef, ElementRefExt};
-use crate::{Error, NoneErrorExt, Result};
+use crate::{
+    api::{ElementRef, ElementRefExt},
+    Error, NoneErrorExt, Result,
+};
 
 /// Short match result.
 #[derive(Debug, PartialEq)]
-pub struct MatchResultBrief {
+pub struct MatchResult {
     pub team1: String,
     pub team2: String,
     pub result: (u8, u8),
@@ -17,7 +19,7 @@ pub struct MatchResultBrief {
     pub stars: usize,
 }
 
-impl MatchResultBrief {
+impl MatchResult {
     // TODO: doc
     pub fn from_element_ref(element: ElementRef) -> Result<Self> {
         let link = element
@@ -77,11 +79,11 @@ impl MatchResultBrief {
 }
 
 /// Short batch results for multiple days.
-pub struct DaysResults {
-    pub results: HashMap<String, Vec<MatchResultBrief>>,
+pub struct MatchesResults {
+    pub results: HashMap<String, Vec<MatchResult>>,
 }
 
-impl DaysResults {
+impl MatchesResults {
     // TODO: doc
     pub fn from_html(document: &Html) -> Result<Self> {
         document
@@ -90,23 +92,23 @@ impl DaysResults {
             )?)
             .map(|element| {
                 let day = element
-                    .select_one("span.standard-headline")? // Seems like it changes from div to span in JS
+                    .select_one(".standard-headline")? // Seems like it changes from div to span in JS
                     .hltv_parse_err("Failed to find day headline")?
                     .text2();
 
                 let results = element
                     .select(&Selector::parse("div.result-con")?)
-                    .map(|x| MatchResultBrief::from_element_ref(x))
+                    .map(|x| MatchResult::from_element_ref(x))
                     .collect::<Result<Vec<_>>>()?;
                 Ok((day, results))
             })
             .collect::<Result<HashMap<_, _>>>()
-            .map(|results| DaysResults { results })
+            .map(|results| MatchesResults { results })
     }
 }
 
 #[cfg(test)]
-mod match_brief_tests {
+mod tests {
     use super::*;
 
     use scraper::{Html, Selector};
@@ -118,7 +120,7 @@ mod match_brief_tests {
     }
 
     #[test]
-    fn parse_match_result_brief() {
+    fn parse_match_result() {
         let html = Html::parse_fragment(
             r#"
 <div class="result-con " data-zonedgrouping-entry-unix="1604796087000"><a href="/matches/2345169/stmn-vs-loto-fireleague-latin-power-blast-premier-qualifier" class="a-reset">
@@ -148,8 +150,8 @@ ttps://img-cdn.hltv.org/teamlogo/Mzhpx1A4I2IitU0VrUJWuO.png?ixlib=java-2.1.0&amp
         );
 
         assert_eq!(
-            MatchResultBrief::from_element_ref(get_elem(&html, "div")),
-            Ok(MatchResultBrief {
+            MatchResult::from_element_ref(get_elem(&html, "div")),
+            Ok(MatchResult {
                 team1: "STMN".into(),
                 team2: "Loto".into(),
                 result: (2, 0),
@@ -164,7 +166,7 @@ ttps://img-cdn.hltv.org/teamlogo/Mzhpx1A4I2IitU0VrUJWuO.png?ixlib=java-2.1.0&amp
     }
 
     #[test]
-    fn parse_match_result_brief_no_scores() {
+    fn parse_match_result_no_scores() {
         let html = Html::parse_fragment(
             r#"
 <div class="result-con " data-zonedgrouping-entry-unix="1604796087000"><a href="/matches/2345169/stmn-vs-loto-fireleague-latin-power-blast-premier-qualifier" class="a-reset">
@@ -192,11 +194,11 @@ ttps://img-cdn.hltv.org/teamlogo/Mzhpx1A4I2IitU0VrUJWuO.png?ixlib=java-2.1.0&amp
 "#,
         );
 
-        assert!(MatchResultBrief::from_element_ref(get_elem(&html, "div")).is_err())
+        assert!(MatchResult::from_element_ref(get_elem(&html, "div")).is_err())
     }
 
     #[test]
-    fn parse_day_results() {
+    fn parse_matches_results() {
         let html = Html::parse_fragment(
             r#"
 <html>
@@ -349,14 +351,14 @@ ttps://img-cdn.hltv.org/teamlogo/Mzhpx1A4I2IitU0VrUJWuO.png?ixlib=java-2.1.0&amp
 "#,
         );
 
-        let res = DaysResults::from_html(&html).unwrap();
+        let res = MatchesResults::from_html(&html).unwrap();
         assert_eq!(res.results.len(), 2);
         assert_eq!(res.results["Results for November 7th 2020"].len(), 3);
         assert_eq!(res.results["Results for November 8th 2020"].len(), 2);
     }
 
     #[test]
-    fn parse_day_results_err() {
+    fn parse_matches_results_err() {
         let html = Html::parse_fragment(
             r#"
 <div class="results-holder">
@@ -394,6 +396,6 @@ ttps://img-cdn.hltv.org/teamlogo/Mzhpx1A4I2IitU0VrUJWuO.png?ixlib=java-2.1.0&amp
 "#,
         );
 
-        assert!(DaysResults::from_html(&html).is_err());
+        assert!(MatchesResults::from_html(&html).is_err());
     }
 }
